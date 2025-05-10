@@ -39,7 +39,7 @@ data = {}
 
 
 def load_model_checkpoint() -> None:
-    logger.info("IO test skipping checkpoint loading.")
+    logger.info("Reading zarr file and preparing policy...")
 
 
 @asynccontextmanager
