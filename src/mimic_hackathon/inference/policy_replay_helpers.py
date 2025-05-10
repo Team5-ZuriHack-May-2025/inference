@@ -142,17 +142,17 @@ def load_zarr_file(zarr_path: str):
         # print(euler_angles[0], euler_angles[1])
 
         # Compute differences between consecutive rotations
-        rotation_diffs = [
+        rotation_obj_diffs = [
             rotation_objects[i].inv() * rotation_objects[i + 1]
             for i in range(len(rotation_objects) - 1)
         ]
 
-        # euler_angles = [rd.as_euler("xyz", degrees=True) for rd in rotation_diffs]
+        # euler_angles = [rd.as_euler("xyz", degrees=True) for rd in rotation_obj_diffs]
         # print("Euler Angles rot diff (degrees):")
         # print(euler_angles)
 
         # Extract differences as rotation matrices or quaternions
-        diff_matrices = np.array([diff.as_matrix() for diff in rotation_diffs])
+        diff_matrices = np.array([diff.as_matrix() for diff in rotation_obj_diffs])
 
         print("diff_matrices shape", diff_matrices.shape)
 
@@ -162,6 +162,23 @@ def load_zarr_file(zarr_path: str):
         # print(rotations_diff[0])
         # print("diff mat")
         # print(diff_matrices[0])
+        print("actions diff shape")
+        print(translations_diff.shape, "translations")
+        print(rotations_diff.shape, "rotations")
+        print(hand_ds[1:, :].shape, "hand pose")
+
+        actions = np.concatenate(
+            (translations_diff, rotations_diff, hand_ds[1:, :]), axis=1
+        )
+        print(actions.shape, "actions shape")
+        print(clip_length, "clip_length")
+        print(pose_ds[0], "initial arm pose")
+
+        return {
+            "actions": actions,
+            "clip_length": clip_length,
+            "initial_arm_pose": pose_ds[0],
+        }
 
     except FileNotFoundError:
         print(f"Error: Zarr store not found at {zarr_path}. Please check the path.")
