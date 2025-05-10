@@ -26,10 +26,6 @@ from mimic_hackathon.inference.serialization import (
     serialize,
 )
 
-from mimic_hackathon.inference.policy_replay_helpers import (
-    load_zarr_file,
-)
-
 
 KEY_CHECKPOINT_PATH = "CHECKPOINT_PATH"
 KEY_POLICY_PLAYER = "POLICY_PLAYER"
@@ -43,10 +39,7 @@ data = {}
 
 
 def load_model_checkpoint() -> None:
-    logger.info("Reading zarr file and preparing policy...")
-    data["WAVE"] = load_zarr_file(
-        "/home/sjhu/Repositories/ZuriHack/datasets/kitchen_data_wave_2025_05_10_11_32_41.zarr"
-    )
+    logger.info("IO test skipping checkpoint loading.")
 
 
 @asynccontextmanager
@@ -84,27 +77,36 @@ def pretty_print_dict(d):
     pprint.pprint(formatted_dict, width=80)
 
 
-WAVE_COUNTER = 0
+COUNTER = 0
 
 
 @app.post("/predict")
 async def predict(observation: InputData) -> JSONResponse:
     """Get action prediction from the model given an observation."""
-    global WAVE_COUNTER
-
+    global COUNTER
     obs = deserialize_numpy(observation.data)
     # print(f"got obs: {obs}")
     pretty_print_dict(obs)
-    if WAVE_COUNTER < len(data["WAVE"]["actions"]) - 5:
-        action = data["WAVE"]["actions"][WAVE_COUNTER]
+    hand_joints = obs["obs/robot0_hand_joints_lowdim"][0]
+    x = 0.005 if COUNTER < 15 else -0.005
+    COUNTER += 1
+    if COUNTER > 30:
+        COUNTER = 0
 
-        # opt 1: repeat same action 10 times
-        WAVE_COUNTER += 1
-        chunks = [action for _ in range(10)]
-
-        return {"actions": serialize(chunks)}
-    else:
-        return JSONResponse(content=None)
+    action = [
+        x,
+        0.0,
+        0.0,
+        1.0,
+        0.0,
+        0.0,
+        0.0,
+        1.0,
+        0.0,
+    ] + hand_joints.tolist()
+    print(f"action: {action}")
+    return {"actions": serialize([action])}
+    # return JSONResponse(content=None)
     # actions = data[KEY_POLICY_PLAYER].step(obs) if KEY_POLICY_PLAYER in data else None
     # if actions is not None:
     #     return {"actions": serialize(actions)}
