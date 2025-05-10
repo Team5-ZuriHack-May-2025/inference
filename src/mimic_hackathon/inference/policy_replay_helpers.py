@@ -40,6 +40,13 @@ def complete_rotation_matrices_2_3(rotations):
     return np.array(full_rotations)
 
 
+# get rotation diff between two 3x3 rotation matrices (a-b) and return the rotation matrix
+def rotation_diff(a, b):
+    ar, br = R.from_matrix(a), R.from_matrix(b)
+    diff = ar.inv() * br
+    return diff
+
+
 def load_zarr_file(zarr_path: str):
     try:
         # Open the Zarr hierarchy (root group)
