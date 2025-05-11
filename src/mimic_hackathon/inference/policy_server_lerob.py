@@ -19,8 +19,8 @@ from fastapi import FastAPI, Query
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from datasets import load_dataset
+from datetime import datetime
 
-import torch
 import numpy as np
 
 from mimic_hackathon.inference.serialization import (
@@ -48,7 +48,20 @@ policies_info = {
 # still policy does not move
 class DefaultPolicy:
     def predict(obs):
-        return JSONResponse(content=None)
+        return None
+
+
+class GoToPolicy:
+    def __init__(self, goal: np.ndarray, cb: str):
+        self.goal = goal
+        self.callback = cb
+        self.init_time = datetime.now()
+
+    def predict(self, obs: dict):
+        time_difference = (datetime.now() - self.init_time).total_seconds()
+        if time_difference >= 4:
+            data[KEY_ACTIVE_POLICY] = data[KEY_AVAILABLE_POLICIES][self.callback]
+        return [self.goal]
 
 
 class HardcodedPolicy:
@@ -145,7 +158,8 @@ async def set_policy(
             },
         )
 
-    data[KEY_ACTIVE_POLICY] = data[KEY_AVAILABLE_POLICIES][policy_name]
+    wanted_policy = data[KEY_AVAILABLE_POLICIES][policy_name]
+    data[KEY_ACTIVE_POLICY] = GoToPolicy(wanted_policy.get_state(), policy_name)
     logger.info(f"Active policy set to '{policy_name}'")
     return JSONResponse(content={"status": "success", "active_policy": policy_name})
 
@@ -156,7 +170,12 @@ async def predict(
 ) -> JSONResponse:
     obs = deserialize_numpy(observation.data)
     actions = data[KEY_ACTIVE_POLICY].predict(obs)
-    return JSONResponse(content={"actions": serialize(actions)})
+    print("active policy", data[KEY_ACTIVE_POLICY])
+    print("actions", actions)
+    if actions is None:
+        return JSONResponse(content=None)
+    else:
+        return JSONResponse(content={"actions": serialize(actions)})
 
 
 def main(ip: str, port: int):
