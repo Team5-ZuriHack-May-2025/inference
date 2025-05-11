@@ -39,9 +39,17 @@ logger.setLevel(logging.INFO)
 
 policies_info = {
     "green": {"dataset": "chengkunli/green_cup_pour", "start": 100, "end": 750},
-    "blue": {"dataset": "chengkunli/blue_cup_pour", "start": 0, "end": 400},
-    "red": {"dataset": "chengkunli/red_cup_pour", "start": 0, "end": 400},
-    "yellow": {"dataset": "chengkunli/yellow_cup_pour", "start": 0, "end": 400},
+    "blue": {
+        "dataset": "chengkunli/blue_cup_pour_single",
+        "start": 100,
+        "end": 750,
+    },
+    "red": {"dataset": "chengkunli/red_cup_pour_single", "start": 100, "end": 750},
+    "yellow": {
+        "dataset": "chengkunli/yellow_cup_pour_single",
+        "start": 100,
+        "end": 750,
+    },
 }
 
 
@@ -69,6 +77,7 @@ class HardcodedPolicy:
         self.dataset = load_dataset(dataset_name)
         self.start_t = start_t
         self.end_t = end_t
+        self.t = start_t
 
     def play(self, start_t, end_t):
         """
@@ -84,11 +93,13 @@ class HardcodedPolicy:
         """
         Predict the action from start_t to end_t
         """
-        action = self.get_action(self.t)
-        return action
+        actions = self.get_action(self.t)
+        if t < self.end_t:
+            self.t += 15
+        return actions
 
     def get_action(self, t):
-        return self.dataset["train"]["action"][t]
+        return self.dataset["train"]["action"][t : t + 10]
 
     def get_state(self, t=None):
         if not t:
@@ -145,10 +156,11 @@ async def root() -> JSONResponse:
 
 @app.post("/set_policy")
 async def set_policy(
-    policy_name: str = Query(..., description="Name of the policy to set as active"),
+    input: InputData,
 ) -> JSONResponse:
     """Set the active policy to use"""
     print(data[KEY_AVAILABLE_POLICIES])
+    policy_name = input.data["policy"]
 
     if policy_name not in data[KEY_AVAILABLE_POLICIES]:
         return JSONResponse(
